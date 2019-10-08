@@ -22,7 +22,7 @@ namespace Fennel
             _target = HeroController.instance;
         }
 
-        private void Start()
+        private void Start() 
         {
             isDying = true;
             _sr.material.SetFloat("_FlashAmount", 0f);

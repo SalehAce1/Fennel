@@ -130,17 +130,17 @@ namespace Fennel
             }
             GameObject lightning = Fennel.preloadedGO["lightning"].transform.Find("light2").gameObject;
             lightning.AddComponent<DamageHero>().damageDealt = 2;
-            lightning.gameObject.layer = 17;
+            lightning.gameObject.layer = 22;
 
             foreach (PolygonCollider2D i in fennel.GetComponentsInChildren<PolygonCollider2D>(true))
             {
                 i.isTrigger = true;
                 i.gameObject.AddComponent<DamageHero>();
-                i.gameObject.layer = 17;
+                i.gameObject.layer = 22;
             }
 
             Fennel.preloadedGO["impact"].AddComponent<DamageHero>().damageDealt = 2;
-            Fennel.preloadedGO["impact"].layer = 17;
+            Fennel.preloadedGO["impact"].layer = 22;
             Fennel.preloadedGO["impact"].GetComponent<SpriteRenderer>().material = new Material(Shader.Find("Sprites/Default"));
 
             var _sr = fennel.GetComponent<SpriteRenderer>();

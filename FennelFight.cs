@@ -36,9 +36,8 @@ namespace Fennel
         private float afterimageTimer = 0f;
         private int afterimageIndex = 0;
         private float fadeCopyTime = 8f;
-        private bool shouldBackflip;
         private GameObject[] afterimages;
-        private Dictionary<IEnumerator, int> movesCount;
+        private Dictionary<Func<IEnumerator>, int> movesCount;
         private const float GROUND_Y = 6.75f;
         private const float RIGHT_X = 117f;
         private const float LEFT_X = 88f;
@@ -47,8 +46,9 @@ namespace Fennel
         public const int HP_MAX = 600;
         public const int HP_PHASE2 = 400;
         public bool afterImageStart;
+        public bool doNextAttack;
 
-        private void Awake()
+        private void Awake() //like an inbetween "face the player with a very small delay" first before executing any of her attacks
         {
             _rb = gameObject.GetComponent<Rigidbody2D>();
             _sr = gameObject.GetComponent<SpriteRenderer>();
@@ -59,7 +59,7 @@ namespace Fennel
             _aud = gameObject.AddComponent<AudioSource>();
             _anim = gameObject.GetComponent<Animator>();
             _target = HeroController.instance;
-            movesCount = new Dictionary<IEnumerator, int>();
+            movesCount = new Dictionary<Func<IEnumerator>, int>();
         }
 
         private IEnumerator Start()
@@ -75,13 +75,6 @@ namespace Fennel
             _rc.SetRecoilSpeed(15f);
             _rb.gravityScale = 0f;
 
-            movesCount.Add(moves.Dash(), 0);
-            movesCount.Add(moves.SlamGround(), 0);
-            movesCount.Add(moves.JumpDive(), 0);
-            movesCount.Add(moves.BackFlip(), 0);
-            movesCount.Add(moves.Attack(), 0);
-            movesCount.Add(moves.AirAttack(), 0);
-
             //More of Katie's image code
             afterimages = new GameObject[10];
             for (int i = 0; i < afterimages.Length; i++)
@@ -95,123 +88,158 @@ namespace Fennel
             yield return new WaitForSeconds(0.1f);
             moves = gameObject.GetComponent<FennelMoves>();
             moves.distToGnd = _bc.bounds.extents.y;
+
+            Log("newstr");
+            movesCount.Add(moves.Attack, 0);
+            movesCount.Add(moves.SlamGround, 0);
+            movesCount.Add(moves.AirAttack, 0);
+            movesCount.Add(moves.Dash, 0);
+            movesCount.Add(moves.BackFlip, 0);
+            movesCount.Add(moves.JumpDive, 0);
+            movesCount.Add(moves.Buff, 0);
+            Log("newstr");
+
+
             _anim.Play("intro1");
             yield return new WaitWhile(() => _anim.IsPlaying());
             StartCoroutine(IntroText());
             StartCoroutine(IntroAnim());
         }
 
-        public void NextAttack()
+        public IEnumerator NextAttack() //If attack too many times, attack then backflip
         {
-            IEnumerator curr = moves.Dash();
+            List<Func<IEnumerator>> AttacksToDo = new List<Func<IEnumerator>>();
+
             if (_hm.hp > HP_PHASE2)
             {
-                if (DistXToPlayer() > TOO_FAR_X)  //If player is far
-                {
-                    int rnd = UnityEngine.Random.Range(0, 4);
-                    switch (rnd)
-                    {
-                        case 0:
-                            curr = moves.Dash();
-                            shouldBackflip = false;
-                            break;
-                        case 1:
-                            curr = moves.SlamGround();
-                            break;
-                        case 2:
-                            curr = moves.JumpDive();
-                            break;
-                        case 3:
-                            curr = moves.AirAttack();
-                            break;
-                    }
-                }
-                else //If player is close
-                {
-                    float heroSignX = Mathf.Sign(gameObject.transform.GetPositionX() - _target.transform.GetPositionX()) * -1f;
-                    if (shouldBackflip && heroSignX < 0 && gameObject.transform.GetPositionX() < 115f ||
-                        heroSignX > 0 && gameObject.transform.GetPositionX() > 90f && movesCount[moves.BackFlip()] < MAX_REPEAT)
-                    {
-                        shouldBackflip = false;
-                        curr = moves.BackFlip();
-                    }
-                    else if (heroSignX < 0 && gameObject.transform.GetPositionX() > 115f ||
-                        heroSignX > 0 && gameObject.transform.GetPositionX() < 90f && movesCount[moves.JumpDive()] < MAX_REPEAT)
-                    {
-                        curr = moves.JumpDive();
-                    }
-                    else if (heroSignX < 0 && gameObject.transform.GetPositionX() < 115f ||
-                        heroSignX > 0 && gameObject.transform.GetPositionX() > 90f && movesCount[moves.AirAttack()] < MAX_REPEAT)
-                    {
-                        curr = moves.AirAttack();
-                    }
-                    else
-                    {
-                        curr = moves.ComboAttack();
-                    }
-                }
-                StartCoroutine(curr);
-                return;
-            }
-            if (!buffed)
-            {
-                buffed = true;
-                afterImageStart = true;
-                StartCoroutine(moves.Buff());
-                return;
-            }
-            //Phase 2 attacks
-            if (_hm.hp <= HP_PHASE2)
-            {
-                if (DistXToPlayer() > TOO_FAR_X)  //If player is far
-                {
-                    int rnd = UnityEngine.Random.Range(0, 4);
 
-                    switch (rnd)
-                    {
-                        case 0:
-                            curr = moves.Dash();
-                            shouldBackflip = false;
-                            break;
-                        case 1:
-                            curr = moves.SlamGround();
-                            break;
-                        case 2:
-                            curr = moves.JumpDive();
-                            break;
-                        case 3:
-                            curr = moves.AirAttack();
-                            break;
-                    }
-                }
-                else //If player is close
+                if (IsPlayerAboveHead())
                 {
-                    float heroSignX = Mathf.Sign(gameObject.transform.GetPositionX() - _target.transform.GetPositionX()) * -1f;
-                    if (shouldBackflip && heroSignX < 0 && gameObject.transform.GetPositionX() < 115f ||
-                        heroSignX > 0 && gameObject.transform.GetPositionX() > 90f )
+                    if (transform.GetPositionX() < 88f)
                     {
-                        shouldBackflip = false;
-                        curr = moves.BackFlip();
+                        if (_target.transform.GetPositionX() > 88f) AttacksToDo.Add(moves.Dash);
+                        else AttacksToDo.Add(moves.BackFlip);
                     }
-                    else if (heroSignX < 0 && gameObject.transform.GetPositionX() > 115f ||
-                        heroSignX > 0 && gameObject.transform.GetPositionX() < 90f)
+                    else if (transform.GetPositionX() > 115f)
                     {
-                        curr = moves.JumpDive();
-                    }
-                    else if (heroSignX < 0 && gameObject.transform.GetPositionX() < 115f ||
-                        heroSignX > 0 && gameObject.transform.GetPositionX() > 90f)
-                    {
-                        curr = moves.AirAttack();
+                        if (_target.transform.GetPositionX() < 115f) AttacksToDo.Add(moves.BackFlip);
+                        else AttacksToDo.Add(moves.Dash);
                     }
                     else
                     {
-                        curr = moves.ComboAttack();
+                        int rnd = UnityEngine.Random.Range(0, 2);
+                        if (rnd == 0)
+                        {
+                            AttacksToDo.Add(moves.Dash);
+                        }
+                        else
+                        {
+                            AttacksToDo.Add(moves.BackFlip);
+                        }
                     }
                 }
-                UpdateMovesCount(curr);
-                StartCoroutine(curr);
-                return;
+                else if (DistXToPlayer() > 6f)
+                {
+                    float rnd = UnityEngine.Random.Range(0, 2);
+                    if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
+                    else AttacksToDo.Add(moves.JumpDive);
+                }
+                else
+                {
+                    if (movesCount[moves.Attack] < 1) AttacksToDo.Add(moves.Attack);
+                    else
+                    {
+                        float rnd = UnityEngine.Random.Range(0, 2);
+                        if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
+                        else AttacksToDo.Add(moves.JumpDive);
+                    }
+                }
+                
             }
+            else if (_hm.hp <= HP_PHASE2 && !buffed)
+            {
+                afterImageStart = true;
+                AttacksToDo.Add(moves.Buff);
+                buffed = true;
+            }
+            else
+            {
+                if (IsPlayerAboveHead())
+                {
+                    if (transform.GetPositionX() < 88f)
+                    {
+                        if (_target.transform.GetPositionX() > 88f)
+                        {
+                            AttacksToDo.Add(moves.Dash);
+                            AttacksToDo.Add(moves.Attack);
+                        }
+                        else
+                        {
+                            AttacksToDo.Add(moves.BackFlip);
+                            AttacksToDo.Add(moves.AirAttack);
+                        }
+                    }
+                    else if (transform.GetPositionX() > 115f)
+                    {
+                        if (_target.transform.GetPositionX() < 115f)
+                        {
+                            AttacksToDo.Add(moves.BackFlip);
+                            AttacksToDo.Add(moves.AirAttack);
+                        }
+                        else
+                        {
+                            AttacksToDo.Add(moves.Dash);
+                            AttacksToDo.Add(moves.Attack);
+                        }
+                    }
+                    else
+                    {
+                        int rnd = UnityEngine.Random.Range(0, 2);
+                        if (rnd == 0)
+                        {
+                            AttacksToDo.Add(moves.Dash);
+                            AttacksToDo.Add(moves.JumpDive);
+                        }
+                        else
+                        {
+                            AttacksToDo.Add(moves.BackFlip);
+                            AttacksToDo.Add(moves.SlamGround);
+                        }
+                    }
+                }
+                else if (DistXToPlayer() > 6f)
+                {
+                    float rnd = UnityEngine.Random.Range(0, 2);
+                    if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
+                    else AttacksToDo.Add(moves.JumpDive);
+                }
+                else
+                {
+                    if (movesCount[moves.Attack] < 1)
+                    {
+                        AttacksToDo.Add(moves.Attack);
+                        AttacksToDo.Add(moves.AirAttack);
+                    }
+                    else
+                    {
+                        float rnd = UnityEngine.Random.Range(0, 2);
+                        if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
+                        else AttacksToDo.Add(moves.JumpDive);
+                    }
+                }
+            }
+
+            foreach (Func<IEnumerator> attack in AttacksToDo)
+            {
+                StartCoroutine(attack());
+                Log("Starting [" + attack.Method.Name + "]");
+                movesCount[attack]++;
+                UpdateMovesCount(attack);
+                yield return null;
+                yield return new WaitWhile(() => !doNextAttack);
+                Log("Ending [" + attack.Method.Name + "]");
+            }
+            StartCoroutine(NextAttack());
         }
 
         IEnumerator IntroText()
@@ -259,7 +287,7 @@ namespace Fennel
             _anim.Play("intro4");
             yield return new WaitForSeconds(0.05f);
             yield return new WaitWhile(() => _anim.IsPlaying());
-            NextAttack();
+            StartCoroutine(NextAttack());
         }
 
         private void Update()
@@ -301,7 +329,6 @@ namespace Fennel
             if (self.name.Contains("fennel"))
             {
                 fennelDamage = true;
-                shouldBackflip = true;
                 if (!flashing)
                 {
                     flashing = true;
@@ -417,15 +444,19 @@ namespace Fennel
             return Mathf.Abs(_target.transform.GetPositionX() - gameObject.transform.GetPositionX());
         }
 
-        private void UpdateMovesCount(IEnumerator move)
+        private bool IsPlayerAboveHead()
         {
-            foreach (IEnumerator i in movesCount.Keys)
+            bool xCorr = DistXToPlayer() < 1.8f;
+            bool yCorr = _target.transform.GetPositionY() - gameObject.transform.GetPositionY() > moves.distToGnd;
+            return xCorr && yCorr;
+        }
+
+        private void UpdateMovesCount(Func<IEnumerator> move)
+        {
+            List<Func<IEnumerator>> temp = new List<Func<IEnumerator>>(movesCount.Keys);
+            foreach (Func<IEnumerator> i in temp)
             {
-                if (move == i)
-                {
-                    movesCount[i]++;
-                    continue;
-                }
+                if (move == i) continue;
                 movesCount[i] = 0;
             }
         }
