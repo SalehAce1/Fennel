@@ -45,6 +45,7 @@ namespace Fennel
         private const int MAX_REPEAT = 1;
         public const int HP_MAX = 600;
         public const int HP_PHASE2 = 400;
+        public float ORB_DASH_SIZE = 1.5f;
         public bool afterImageStart;
         public bool doNextAttack;
 
@@ -88,8 +89,6 @@ namespace Fennel
             yield return new WaitForSeconds(0.1f);
             moves = gameObject.GetComponent<FennelMoves>();
             moves.distToGnd = _bc.bounds.extents.y;
-
-            Log("newstr");
             movesCount.Add(moves.Attack, 0);
             movesCount.Add(moves.SlamGround, 0);
             movesCount.Add(moves.AirAttack, 0);
@@ -97,8 +96,6 @@ namespace Fennel
             movesCount.Add(moves.BackFlip, 0);
             movesCount.Add(moves.JumpDive, 0);
             movesCount.Add(moves.Buff, 0);
-            Log("newstr");
-
 
             _anim.Play("intro1");
             yield return new WaitWhile(() => _anim.IsPlaying());
@@ -115,15 +112,19 @@ namespace Fennel
 
                 if (IsPlayerAboveHead())
                 {
-                    if (transform.GetPositionX() < 88f)
+                    float xPivot = transform.GetPositionX();
+                    if (xPivot < 90f)
                     {
-                        if (_target.transform.GetPositionX() > 88f) AttacksToDo.Add(moves.Dash);
+                        if (_target.transform.GetPositionX() > xPivot)
+                        {
+                            AttacksToDo.Add(moves.Dash);
+                        }
                         else AttacksToDo.Add(moves.BackFlip);
                     }
-                    else if (transform.GetPositionX() > 115f)
+                    else if (xPivot > 113f)
                     {
-                        if (_target.transform.GetPositionX() < 115f) AttacksToDo.Add(moves.BackFlip);
-                        else AttacksToDo.Add(moves.Dash);
+                        if (_target.transform.GetPositionX() < xPivot) AttacksToDo.Add(moves.Dash);
+                        else AttacksToDo.Add(moves.BackFlip);
                     }
                     else
                     {
@@ -140,18 +141,42 @@ namespace Fennel
                 }
                 else if (DistXToPlayer() > 6f)
                 {
-                    float rnd = UnityEngine.Random.Range(0, 2);
-                    if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
-                    else AttacksToDo.Add(moves.JumpDive);
+                    int rnd = UnityEngine.Random.Range(0, 3);
+
+                    if (rnd == 0 && movesCount[moves.SlamGround] < 1)
+                    {
+                        AttacksToDo.Add(moves.SlamGround);
+                    }
+                    else if (rnd == 1 && movesCount[moves.JumpDive] < 1)
+                    {
+                        AttacksToDo.Add(moves.JumpDive);
+                    }
+                    else
+                    {
+                        AttacksToDo.Add(moves.Dash);
+                    }
                 }
                 else
                 {
-                    if (movesCount[moves.Attack] < 1) AttacksToDo.Add(moves.Attack);
+                    int basicRnd = UnityEngine.Random.Range(0, 3);
+
+                    if (basicRnd < 2 && movesCount[moves.Attack] < 1f) AttacksToDo.Add(moves.Attack);
                     else
                     {
-                        float rnd = UnityEngine.Random.Range(0, 2);
-                        if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
-                        else AttacksToDo.Add(moves.JumpDive);
+                        int rnd = UnityEngine.Random.Range(0, 3);
+
+                        if (rnd == 0 && movesCount[moves.SlamGround] < 1)
+                        {
+                            AttacksToDo.Add(moves.SlamGround);
+                        }
+                        else if (rnd == 1 && movesCount[moves.JumpDive] < 1)
+                        {
+                            AttacksToDo.Add(moves.JumpDive);
+                        }
+                        else
+                        {
+                            AttacksToDo.Add(moves.BackFlip);
+                        }
                     }
                 }
                 
@@ -159,16 +184,18 @@ namespace Fennel
             else if (_hm.hp <= HP_PHASE2 && !buffed)
             {
                 afterImageStart = true;
+                ORB_DASH_SIZE = 1.8f;
                 AttacksToDo.Add(moves.Buff);
                 buffed = true;
             }
             else
             {
+                float xPivot = transform.GetPositionX();
                 if (IsPlayerAboveHead())
                 {
-                    if (transform.GetPositionX() < 88f)
+                    if (transform.GetPositionX() < 90f)
                     {
-                        if (_target.transform.GetPositionX() > 88f)
+                        if (_target.transform.GetPositionX() > xPivot)
                         {
                             AttacksToDo.Add(moves.Dash);
                             AttacksToDo.Add(moves.Attack);
@@ -179,16 +206,16 @@ namespace Fennel
                             AttacksToDo.Add(moves.AirAttack);
                         }
                     }
-                    else if (transform.GetPositionX() > 115f)
+                    else if (transform.GetPositionX() > 113f)
                     {
-                        if (_target.transform.GetPositionX() < 115f)
+                        if (_target.transform.GetPositionX() < xPivot)
                         {
-                            AttacksToDo.Add(moves.BackFlip);
+                            AttacksToDo.Add(moves.Dash);
                             AttacksToDo.Add(moves.AirAttack);
                         }
                         else
                         {
-                            AttacksToDo.Add(moves.Dash);
+                            AttacksToDo.Add(moves.BackFlip);
                             AttacksToDo.Add(moves.Attack);
                         }
                     }
@@ -209,22 +236,52 @@ namespace Fennel
                 }
                 else if (DistXToPlayer() > 6f)
                 {
-                    float rnd = UnityEngine.Random.Range(0, 2);
-                    if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
-                    else AttacksToDo.Add(moves.JumpDive);
+                    int rnd = UnityEngine.Random.Range(0,3);
+
+                    if (rnd == 0 && movesCount[moves.SlamGround] < 1)
+                    {
+                        AttacksToDo.Add(moves.SlamGround);
+                        AttacksToDo.Add(moves.AirAttack);
+                    }
+                    else if (rnd == 1 && movesCount[moves.JumpDive] < 1)
+                    {
+                        AttacksToDo.Add(moves.JumpDive);
+                        AttacksToDo.Add(moves.Dash);
+                    }
+                    else
+                    {
+                        AttacksToDo.Add(moves.Dash);
+                        AttacksToDo.Add(moves.AirAttack);
+                    }
                 }
                 else
                 {
-                    if (movesCount[moves.Attack] < 1)
+                    int basicRnd = UnityEngine.Random.Range(0, 3);
+
+                    if (basicRnd < 2 && movesCount[moves.Attack] < 1f)
                     {
                         AttacksToDo.Add(moves.Attack);
                         AttacksToDo.Add(moves.AirAttack);
                     }
                     else
                     {
-                        float rnd = UnityEngine.Random.Range(0, 2);
-                        if (rnd == 0) AttacksToDo.Add(moves.SlamGround);
-                        else AttacksToDo.Add(moves.JumpDive);
+                        int rnd = UnityEngine.Random.Range(0, 3);
+
+                        if (rnd == 0 && movesCount[moves.SlamGround] < 1)
+                        {
+                            AttacksToDo.Add(moves.BackFlip);
+                            AttacksToDo.Add(moves.SlamGround);
+                        }
+                        else if (rnd == 1 && movesCount[moves.JumpDive] < 1)
+                        {
+                            AttacksToDo.Add(moves.BackFlip);
+                            AttacksToDo.Add(moves.JumpDive);
+                        }
+                        else
+                        {
+                            AttacksToDo.Add(moves.Dash);
+                            AttacksToDo.Add(moves.AirAttack);
+                        }
                     }
                 }
             }
@@ -255,7 +312,7 @@ namespace Fennel
                 _target.RelinquishControl();
                 _target.StopAnimationControl();
                 _target.gameObject.GetComponent<tk2dSpriteAnimator>().Play("Idle");
-                _target.transform.localScale = new Vector2(-1f * Mathf.Abs(_target.transform.localScale.x), _target.transform.localScale.y);
+                _target.FaceRight();
                 GameObject sec = text.transform.Find("Text").gameObject;
                 sec.GetComponent<DialogueBox>().StartConversation("FENNEL_INTRO", "testudo");
                 yield return new WaitWhile(() => sec.GetComponent<DialogueBox>().currentPage <= 1);
@@ -269,7 +326,7 @@ namespace Fennel
                 _target.RegainControl();
                 GameManager.instance.playerData.disablePause = false;
                 _target.StartAnimationControl();
-                //ArenaFinder.foundBoss = true;
+                ArenaFinder.foundBoss = true;
             }
             introTextDone = true;
         }
@@ -453,10 +510,11 @@ namespace Fennel
 
         private void UpdateMovesCount(Func<IEnumerator> move)
         {
+            if (move == moves.AirAttack || move == moves.Dash || move == moves.Dash) return;
             List<Func<IEnumerator>> temp = new List<Func<IEnumerator>>(movesCount.Keys);
             foreach (Func<IEnumerator> i in temp)
             {
-                if (move == i) continue;
+                if (i == move) continue;
                 movesCount[i] = 0;
             }
         }

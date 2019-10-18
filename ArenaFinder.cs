@@ -4,6 +4,10 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Reflection;
+using HutongGames.PlayMaker;
+using HutongGames.PlayMaker.Actions;
+using ModCommon.Util;
+using ModCommon;
 using System.Linq;
 using Logger = Modding.Logger;
 using UObject = UnityEngine.Object;
@@ -136,13 +140,29 @@ namespace Fennel
             {
                 i.isTrigger = true;
                 i.gameObject.AddComponent<DamageHero>();
+                i.gameObject.AddComponent<Parryable>();
                 i.gameObject.layer = 22;
+            }
+
+            foreach (GameObject i in Resources.FindObjectsOfTypeAll<GameObject>())
+            {
+                if (i.PrintSceneHierarchyPath() == "Hollow Shade\\Slash")
+                {
+                    Fennel.preloadedGO["parryFX"] = i.LocateMyFSM("nail_clash_tink").GetAction<SpawnObjectFromGlobalPool>("No Box Down", 1).gameObject.Value;
+                    AudioClip aud = i.LocateMyFSM("nail_clash_tink").GetAction<AudioPlayerOneShot>("Blocked Hit", 5).audioClips[0];
+                    GameObject clashSndObj = new GameObject();
+                    AudioSource clashSnd = clashSndObj.AddComponent<AudioSource>();
+                    clashSnd.clip = aud;
+                    clashSnd.pitch = UnityEngine.Random.Range(0.85f, 1.15f);
+                    Fennel.preloadedGO["ClashTink"] = clashSndObj;
+                    break;
+                }
             }
 
             Fennel.preloadedGO["impact"].AddComponent<DamageHero>().damageDealt = 2;
             Fennel.preloadedGO["impact"].layer = 22;
             Fennel.preloadedGO["impact"].GetComponent<SpriteRenderer>().material = new Material(Shader.Find("Sprites/Default"));
-
+            
             var _sr = fennel.GetComponent<SpriteRenderer>();
             _sr.material = materials["flash"];
             fennel.AddComponent<FennelFight>();

@@ -38,9 +38,8 @@ namespace Fennel
         public IEnumerator Dash()
         {
             fight.doNextAttack = false;
-            Log("Start Dash");
             float dir = FaceHero() * -1f;
-            Animator orbAnim = SpawnOrb(gameObject.transform.position, 3f, 2f);
+            Animator orbAnim = SpawnOrb(gameObject.transform.position, 3f, fight.ORB_DASH_SIZE);
             yield return new WaitForSeconds(orbAnim.GetCurrentAnimatorStateInfo(0).length/3.3f);
             _anim.PlayAt("dash", 0);
             if (_hm.hp > FennelFight.HP_PHASE2) fight.afterImageStart = true;
@@ -49,14 +48,12 @@ namespace Fennel
             _rb.velocity = new Vector2(0f, 0f);
             if (_hm.hp > FennelFight.HP_PHASE2) fight.afterImageStart = false;
             _anim.Play("idle");
-            Log("End Dash");
             fight.doNextAttack = true;
         }
 
         public IEnumerator Attack()
         {
             fight.doNextAttack = false;
-            Log("Start Attack");
             FaceHero();
             PolygonCollider2D pc1 = gameObject.transform.Find("attack1").GetComponent<PolygonCollider2D>();
             PolygonCollider2D pc2 = gameObject.transform.Find("attack2").GetComponent<PolygonCollider2D>();
@@ -76,14 +73,12 @@ namespace Fennel
             yield return new WaitWhile(() => _anim.IsPlaying());
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
-            Log("End Attack");
             fight.doNextAttack = true;
         }
 
         public IEnumerator AirAttack()
         {
             fight.doNextAttack = false;
-            Log("Start Air Attack");
             float dir = -1f * FaceHero();
 
             PolygonCollider2D pc1 = gameObject.transform.Find("attA1").GetComponent<PolygonCollider2D>();
@@ -123,7 +118,6 @@ namespace Fennel
             _rb.gravityScale = 0f;
             _anim.Play("idle");
             yield return new WaitForSeconds(AATTACK_IDLE);
-            Log("End Air Attack");
             fight.doNextAttack = true;
         }
 
@@ -131,7 +125,6 @@ namespace Fennel
         {
             fight.doNextAttack = false;
             bool opposite = false;
-            Log("Start Backflip");
             float dir = FaceHero(opposite);
             _anim.PlayAt("backflip",0);
             _aud.clip = ArenaFinder.audioClips["sndBackflip"];
@@ -143,14 +136,12 @@ namespace Fennel
             yield return new WaitWhile(() => _anim.IsPlaying());
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
-            Log("End Backflip");
             fight.doNextAttack = true;
         }
 
         public IEnumerator SlamGround() //Make second wave spawn in phase 2 that is in alternate pos
         {
             fight.doNextAttack = false;
-            Log("Start Slam");
             float dir = FaceHero();
 
             float xStart = gameObject.transform.position.x;
@@ -247,13 +238,11 @@ namespace Fennel
             yield return new WaitWhile(() => _anim.IsPlaying());
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
-            Log("End Slam");
             fight.doNextAttack = true;
         }
 
         public IEnumerator SlamGroundV2() //Make second wave spawn in phase 2 that is in alternate pos
         {
-            Log("Start Slam");
             float xStart = gameObject.transform.position.x + 1.9f;
             float distBtw = 3.8f;
             GameObject[] lightnings = new GameObject[17];
@@ -340,13 +329,11 @@ namespace Fennel
                 int index = (int)i;
                 Destroy(lightnings[index]);
             }
-            Log("End SlamV2");
         }
 
         public IEnumerator Buff()
         {
             fight.doNextAttack = false;
-            Log("Start Buff");
             float dir = FaceHero();
             _anim.Play("buff");
             yield return new WaitForSeconds(0.01f);
@@ -359,14 +346,12 @@ namespace Fennel
             }
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
-            Log("End Buff");
             fight.doNextAttack = true;
         }
 
         public IEnumerator JumpDive() //Change wave color
         {
             fight.doNextAttack = false;
-            Log("Start JumpDive");
             float dir = FaceHero() * -1f;
             Vector2 vel = new Vector2(dir * 19f, 38f);
 
@@ -405,13 +390,14 @@ namespace Fennel
                 SpawnWave(true, 2f);
             }
 
+            if (_hm.hp < FennelFight.HP_PHASE2) StartCoroutine(SpawnOrbStream());
+
             yield return new WaitWhile(() => impactAnim.GetCurrentFrame() < 7);
             impact.GetComponent<BoxCollider2D>().enabled = false;
             yield return new WaitWhile(() => impactAnim.IsPlaying());
             Destroy(impact);
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
-            Log("End of Jump Dive");
             fight.doNextAttack = true;
         }
 
@@ -425,6 +411,17 @@ namespace Fennel
             orb.transform.localScale *= sizeScale;
             orb.SetActive(true);
             return orb.GetComponent<Animator>();
+        }
+
+        IEnumerator SpawnOrbStream()
+        {
+            for (int i = -2; i < 5; i++)
+            {
+                float randX = UnityEngine.Random.Range(90f + i * 5f, 90f + (i+1) * 5f);
+                float randY = UnityEngine.Random.Range(6f + i * 3f, 6f + (i+1) * 3f);
+                SpawnOrb(new Vector2(randX, randY), 1f, 0.8f);
+                yield return new WaitForSeconds(0.1f);
+            }
         }
 
         private float FaceHero(bool opposite = false)

@@ -44,7 +44,7 @@ namespace Fennel
             _aud.Play();
             yield return new WaitForSeconds(0.05f);
             yield return new WaitWhile(() => _anim.IsPlaying());
-
+            FaceHero();
             GameObject text = Instantiate(GameObject.Find("DialogueManager"));
             text.SetActive(true);
             yield return null;
@@ -53,6 +53,8 @@ namespace Fennel
             GameManager.instance.playerData.SetBool("disablePause", true);
             _target.RelinquishControl();
             _target.StopAnimationControl();
+            _target.gameObject.GetComponent<tk2dSpriteAnimator>().Play("Idle");
+            _target.transform.localScale = new Vector2(-1f * Mathf.Abs(_target.transform.localScale.x), _target.transform.localScale.y);
             GameObject sec = text.transform.Find("Text").gameObject;
             sec.GetComponent<DialogueBox>().StartConversation("FENNEL_END", "testudo");
             yield return new WaitWhile(() => sec.GetComponent<DialogueBox>().currentPage <= 1);
@@ -70,10 +72,10 @@ namespace Fennel
 
         private float FaceHero()
         {
-            var heroSignX = Mathf.Sign(_target.transform.GetPositionX() - gameObject.transform.GetPositionX());
+            var heroSignX = Mathf.Sign(gameObject.transform.GetPositionX() - _target.transform.GetPositionX());
             var pScale = gameObject.transform.localScale;
             gameObject.transform.localScale = new Vector2(Mathf.Abs(pScale.x) * heroSignX, pScale.y);
-            if (heroSignX > 0) _target.FaceLeft();
+            if (heroSignX < 0) _target.FaceLeft();
             else _target.FaceRight();
             return heroSignX;
         }

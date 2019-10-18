@@ -98,6 +98,7 @@
     <Compile Include="FennelDeath.cs" />
     <Compile Include="FennelFight.cs" />
     <Compile Include="FennelMoves.cs" />
+    <Compile Include="Parryable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
