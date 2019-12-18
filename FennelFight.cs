@@ -7,6 +7,8 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Linq;
+using System.Reflection;
 using System.Collections.Generic;
 using Logger = Modding.Logger;
 
@@ -23,6 +25,7 @@ namespace Fennel
         private HealthManager _hm;
         private AudioSource _aud;
         private GameObject musicControl;
+        private GameObject outlineShape;
         private Animator _anim;
         private Text title;
         private GameObject canvas;
@@ -43,13 +46,13 @@ namespace Fennel
         private const float LEFT_X = 88f;
         private const float TOO_FAR_X = 5f;
         private const int MAX_REPEAT = 1;
-        public const int HP_MAX = 600;
-        public const int HP_PHASE2 = 400;
+        public const int HP_MAX = 900;
+        public const int HP_PHASE2 = 600;
         public float ORB_DASH_SIZE = 1.5f;
         public bool afterImageStart;
         public bool doNextAttack;
 
-        private void Awake() //like an inbetween "face the player with a very small delay" first before executing any of her attacks
+        private void Awake()
         {
             _rb = gameObject.GetComponent<Rigidbody2D>();
             _sr = gameObject.GetComponent<SpriteRenderer>();
@@ -65,11 +68,13 @@ namespace Fennel
 
         private IEnumerator Start()
         {
+            
             FennelDeath.isDying = false;
             On.HealthManager.TakeDamage += HealthManager_TakeDamage;
             _hm.OnDeath += _hm_OnDeath;
             SetSoundSettings(_aud);
             gameObject.layer = 11;
+            
             gameObject.transform.SetPosition3D(HeroController.instance.transform.position.x + 10f, GROUND_Y, 0f);
             _hm.hp = HP_MAX;
             _bc.isTrigger = true;
@@ -185,6 +190,10 @@ namespace Fennel
             {
                 afterImageStart = true;
                 ORB_DASH_SIZE = 1.8f;
+                outlineShape = new GameObject("fenOutline");
+                SpriteRenderer sr = outlineShape.AddComponent<SpriteRenderer>();
+                StartCoroutine(OutlineMaker(sr));
+                _hm.SetAttr("enemyType", 6); //setting to 6 means it won't give soul to player, 0 by default
                 AttacksToDo.Add(moves.Buff);
                 buffed = true;
             }
@@ -371,8 +380,29 @@ namespace Fennel
         }
 
         //------------------------------------------------------------Stuff------------------------------------------------------------
+        private IEnumerator OutlineMaker(SpriteRenderer sr)
+        {
+            GameObject go = sr.gameObject;
+
+            sr.material = ArenaFinder.materials["outline"];
+            go.AddComponent<SpriteOutline>();
+
+            while (go)
+            {
+                sr.sprite = _sr.sprite;
+                go.transform.position = new Vector3(gameObject.transform.position.x, gameObject.transform.position.y, -0.1f);
+                go.transform.localScale = gameObject.transform.localScale;
+                yield return null;
+            }
+        }
+
         private void _hm_OnDeath()
         {
+            Destroy(outlineShape);
+            foreach (GameObject go in FindObjectsOfType<GameObject>().Where(x=>!x.name.Contains(gameObject.name) && x.GetComponent<DamageHero>() != null))
+            {
+                go.SetActive(false);
+            }
             gameObject.AddComponent<FennelDeath>();
             _aud.Stop();
             musicControl.GetComponent<AudioSource>().Stop();

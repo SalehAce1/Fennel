@@ -4,6 +4,7 @@ using ModCommon;
 using Modding;
 using On;
 using System;
+using System.Linq;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -60,14 +61,12 @@ namespace Fennel
             _anim.PlayAt("attack", 0);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 6);
             pc1.enabled = true;
-            _aud.clip = ArenaFinder.audioClips["sndAttack"];
-            _aud.Play();
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndAttack"]);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 8);
             pc1.enabled = false;
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 15);
             pc2.enabled = true;
-            _aud.clip = ArenaFinder.audioClips["sndAttack2"];
-            _aud.Play();
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndAttack2"]);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 19);
             pc2.enabled = false;
             yield return new WaitWhile(() => _anim.IsPlaying());
@@ -88,31 +87,30 @@ namespace Fennel
             PolygonCollider2D pc5 = gameObject.transform.Find("attA5").GetComponent<PolygonCollider2D>();
 
             _anim.PlayAt("attackAir", 0);
-
             _rb.velocity = new Vector2(dir * 17.5f, 15.5f);
             _rb.gravityScale = 0.9f;
-
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 1);
             pc1.enabled = true;
-            _aud.clip = ArenaFinder.audioClips["sndAttack3"];
-            _aud.Play();
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndAttack3"]);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 4);
             pc1.enabled = false;
             pc2.enabled = true;
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 5);
             pc2.enabled = false;
             pc3.enabled = true;
+            StartCoroutine(SpawnLightning(new Vector2(gameObject.transform.GetPositionX(), 13f)));
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 6);
             pc3.enabled = false;
             pc4.enabled = true;
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 7);
             pc4.enabled = false;
             pc5.enabled = true;
+            if (_hm.hp <= FennelFight.HP_PHASE2)  StartCoroutine(SpawnLightning(new Vector2(gameObject.transform.GetPositionX(), 13f)));
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 9);
             pc5.enabled = false;
-            //yield return new WaitWhile(() => _anim.IsPlaying());
 
             yield return new WaitWhile(() => _anim.IsPlaying() && !IsGrounded());
+            StartCoroutine(SpawnLightning(new Vector2(gameObject.transform.GetPositionX(), 13f)));
             gameObject.transform.SetPosition2D(gameObject.transform.GetPositionX(), GROUND_Y);
             _rb.velocity = new Vector2(0f, 0f);
             _rb.gravityScale = 0f;
@@ -127,8 +125,7 @@ namespace Fennel
             bool opposite = false;
             float dir = FaceHero(opposite);
             _anim.PlayAt("backflip",0);
-            _aud.clip = ArenaFinder.audioClips["sndBackflip"];
-            _aud.Play();
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndBackflip"]);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 5);
             _rb.velocity = new Vector2(15f * dir, 0f);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 11);
@@ -146,188 +143,129 @@ namespace Fennel
 
             float xStart = gameObject.transform.position.x;
             float distBtw = 3.8f;
-            GameObject[] lightnings = new GameObject[17];
-            int maxL = lightnings.Length;
+            GameObject[] lightningsOrdered = new GameObject[17];
+            GameObject[] lightningsOrdOff = new GameObject[17];
+            int maxL = lightningsOrdered.Length;
             int halfL = maxL / 2;
 
             for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
             {
                 int index = (int)i;
-                lightnings[index] = Instantiate(Fennel.preloadedGO["lightning"]);
-                lightnings[index].transform.SetPosition2D(new Vector2(x, 13f));
+                lightningsOrdered[index] = Instantiate(Fennel.preloadedGO["lightning"]);
+                lightningsOrdered[index].transform.SetPosition2D(x, 13f);
+                lightningsOrdOff[index] = Instantiate(Fennel.preloadedGO["lightning"]);
+                lightningsOrdOff[index].transform.SetPosition2D(x+distBtw/2f, 13f);
             }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
+            for (float x = xStart, i = halfL; i < maxL; i++, x -= distBtw)
             {
                 int index = (int)i;
-                lightnings[index] = Instantiate(Fennel.preloadedGO["lightning"]);
-                lightnings[index].transform.SetPosition2D(new Vector2(x, 13f));
+                lightningsOrdered[index] = Instantiate(Fennel.preloadedGO["lightning"]);
+                lightningsOrdered[index].transform.SetPosition2D(x, 13f);
+                lightningsOrdOff[index] = Instantiate(Fennel.preloadedGO["lightning"]);
+                lightningsOrdOff[index].transform.SetPosition2D(x-distBtw/2f, 13f);
             }
 
             _anim.PlayAt("slam",0);
             SpawnOrb(gameObject.transform.position);
             yield return new WaitForSeconds(0.01f);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 4);
-            _aud.clip = ArenaFinder.audioClips["sndThunder1"];
-            _aud.Play();
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder1"]);
+            GameObject[] lightnings = lightningsOrdered.OrderBy(x => new System.Random().Next()).ToArray();
+            foreach (GameObject parentL in lightnings)
             {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = true;
+                GameObject light1 = parentL.transform.Find("light1").gameObject;
+                light1.GetComponent<SpriteRenderer>().enabled = true;
+                yield return new WaitForSeconds(0.003f);
             }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
-            {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = true;
-            }
-
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 9);
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
+            foreach (GameObject parentL in lightnings)
             {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = false;
+                GameObject light1 = parentL.transform.Find("light1").gameObject;
+                light1.GetComponent<SpriteRenderer>().enabled = false;
+                yield return new WaitForSeconds(0.003f);
             }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
-            {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = false;
-            }
-
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 13);
-            _aud.clip = ArenaFinder.audioClips["sndThunder2"];
-            _aud.Play();
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder2"]);
+            GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake");
+            foreach (GameObject parentL in lightnings)
             {
-                int index = (int)i;
-                GameObject light2 = lightnings[index].transform.Find("light2").gameObject;
-                SpriteRenderer lightning = light2.GetComponent<SpriteRenderer>();
-                BoxCollider2D lightningBC = light2.GetComponent<BoxCollider2D>();
-                lightning.enabled = true;
-                lightningBC.enabled = true;
+                GameObject light2 = parentL.transform.Find("light2").gameObject;
+                light2.GetComponent<SpriteRenderer>().enabled = true;
+                light2.GetComponent<BoxCollider2D>().enabled = true;
+                StartCoroutine(SpawnRumbleParticle(new Vector2(parentL.transform.GetPositionX(), 4f)));
+                yield return new WaitForSeconds(0.003f);
             }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
+            yield return new WaitWhile(() => _anim.GetCurrentFrame() < 15);
+            foreach(GameObject parentL in lightnings)
+            { 
+                Destroy(parentL);
+                yield return new WaitForSeconds(0.003f);
+            }
+            if (_hm.hp <= FennelFight.HP_PHASE2)
             {
-                int index = (int)i;
-                GameObject light2 = lightnings[index].transform.Find("light2").gameObject;
-                SpriteRenderer lightning = light2.GetComponent<SpriteRenderer>();
-                BoxCollider2D lightningBC = light2.GetComponent<BoxCollider2D>();
-                lightning.enabled = true;
-                lightningBC.enabled = true;
+                int rnd = UnityEngine.Random.Range(0, 2);
+                if (rnd == 0) StartCoroutine(SpawnHorizontalLightning());
+                else StartCoroutine(SlamGroundV2(lightningsOrdOff));
             }
-
-            GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake"); //SmallShake
-            yield return new WaitWhile(() => _anim.GetCurrentFrame() < 17);
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
-            {
-                int index = (int)i;
-                Destroy(lightnings[index]);
-            }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
-            {
-                int index = (int)i;
-                Destroy(lightnings[index]);
-            }
-            if (_hm.hp <= FennelFight.HP_PHASE2) StartCoroutine(SlamGroundV2());
             yield return new WaitWhile(() => _anim.IsPlaying());
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
+            if (_hm.hp <= FennelFight.HP_PHASE2) yield return new WaitForSeconds(0.4f);
             fight.doNextAttack = true;
         }
 
-        public IEnumerator SlamGroundV2() //Make second wave spawn in phase 2 that is in alternate pos
+        private IEnumerator SpawnHorizontalLightning()
         {
-            float xStart = gameObject.transform.position.x + 1.9f;
-            float distBtw = 3.8f;
-            GameObject[] lightnings = new GameObject[17];
-            int maxL = lightnings.Length;
-            int halfL = maxL / 2;
-
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
+            GameObject[] lightOrd = new GameObject[3];
+            int rnd = UnityEngine.Random.Range(0, 3);
+            for (float y = 6f, i = 0; y < 17f; y += 4f, i++)
             {
-                int index = (int)i;
-                lightnings[index] = Instantiate(Fennel.preloadedGO["lightning"]);
-                lightnings[index].transform.SetPosition2D(new Vector2(x, 13f));
+                int index = (int) i;
+                if (i == rnd) continue;
+                lightOrd[index] = Instantiate(Fennel.preloadedGO["lightHoriz"]);
+                lightOrd[index].transform.SetPosition2D(88f, y);
             }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder1"]);
+            GameObject[] lightnings = lightOrd.OrderBy(x => new System.Random().Next()).ToArray();
+            foreach (GameObject parentL in lightnings)
             {
-                int index = (int)i;
-                lightnings[index] = Instantiate(Fennel.preloadedGO["lightning"]);
-                lightnings[index].transform.SetPosition2D(new Vector2(x, 13f));
+                if (parentL == null) continue;
+                foreach (SpriteRenderer childLSpr in parentL.GetComponentsInChildren<SpriteRenderer>(true).Where(x => x.name.Contains("light1")))
+                {
+                    childLSpr.enabled = true;
+                }
+                yield return new WaitForSeconds(0.003f);
             }
-
-            _aud.clip = ArenaFinder.audioClips["sndThunder1"];
-            _aud.Play();
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
+            yield return new WaitForSeconds(0.35f);
+            foreach (GameObject parentL in lightnings)
             {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = true;
+                if (parentL == null) continue;
+                foreach (SpriteRenderer childLSpr in parentL.GetComponentsInChildren<SpriteRenderer>(true).Where(x => x.name.Contains("light1")))
+                {
+                    childLSpr.enabled = false;
+                }
+                yield return new WaitForSeconds(0.003f);
             }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
+            yield return new WaitForSeconds(0.1f);
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder2"]);
+            GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake");
+            foreach (GameObject parentL in lightnings)
             {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = true;
+                if (parentL == null) continue;
+                foreach (DamageHero childLDH in parentL.GetComponentsInChildren<DamageHero>(true))
+                {
+                    GameObject light2 = childLDH.gameObject;
+                    light2.GetComponent<SpriteRenderer>().enabled = true;
+                    light2.GetComponent<BoxCollider2D>().enabled = true;
+                }
+                yield return new WaitForSeconds(0.003f);
             }
-
-            yield return new WaitForSeconds(0.3f);
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
+            yield return new WaitForSeconds(0.1f);
+            foreach (GameObject parentL in lightnings)
             {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = false;
-            }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
-            {
-                int index = (int)i;
-                GameObject light1 = lightnings[index].transform.Find("light1").gameObject;
-                SpriteRenderer lightningAntic = light1.GetComponent<SpriteRenderer>();
-                lightningAntic.enabled = false;
-            }
-
-            yield return new WaitForSeconds(0.3f);
-            _aud.clip = ArenaFinder.audioClips["sndThunder2"];
-            _aud.Play();
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
-            {
-                int index = (int)i;
-                GameObject light2 = lightnings[index].transform.Find("light2").gameObject;
-                SpriteRenderer lightning = light2.GetComponent<SpriteRenderer>();
-                BoxCollider2D lightningBC = light2.GetComponent<BoxCollider2D>();
-                lightning.enabled = true;
-                lightningBC.enabled = true;
-            }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
-            {
-                int index = (int)i;
-                GameObject light2 = lightnings[index].transform.Find("light2").gameObject;
-                SpriteRenderer lightning = light2.GetComponent<SpriteRenderer>();
-                BoxCollider2D lightningBC = light2.GetComponent<BoxCollider2D>();
-                lightning.enabled = true;
-                lightningBC.enabled = true;
-            }
-
-            GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake"); //SmallShake
-            yield return new WaitForSeconds(0.4f);
-            for (float x = xStart, i = 0; i < halfL; i++, x += distBtw)
-            {
-                int index = (int)i;
-                Destroy(lightnings[index]);
-            }
-            for (float x = xStart - distBtw, i = halfL; i < maxL; i++, x -= distBtw)
-            {
-                int index = (int)i;
-                Destroy(lightnings[index]);
+                if (parentL == null) continue;
+                Destroy(parentL);
+                yield return new WaitForSeconds(0.003f);
             }
         }
 
@@ -338,8 +276,7 @@ namespace Fennel
             _anim.Play("buff");
             yield return new WaitForSeconds(0.01f);
             yield return new WaitWhile(() => _anim.IsPlaying());
-            _aud.clip = ArenaFinder.audioClips["sndBuff"];
-            _aud.Play();
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndBuff"]);
             foreach (PolygonCollider2D i in gameObject.GetComponentsInChildren<PolygonCollider2D>(true))
             {
                 i.gameObject.GetComponent<DamageHero>().damageDealt = 2;
@@ -356,8 +293,7 @@ namespace Fennel
             Vector2 vel = new Vector2(dir * 19f, 38f);
 
 
-            _aud.clip = ArenaFinder.audioClips["sndJump"];
-            _aud.Play();
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndJump"]);
 
             _anim.PlayAt("jump",0);
             _rb.velocity = vel;
@@ -373,10 +309,13 @@ namespace Fennel
             _rb.gravityScale = 0f;
             _anim.PlayAt("plunge",0);
             GameObject impact = Instantiate(Fennel.preloadedGO["impact"]);
+            impact.transform.localScale *= 1.2f;
             Animator impactAnim = impact.GetComponent<Animator>();
-            impact.transform.SetPosition2D(gameObject.transform.GetPositionX(), 10f);
+            impactAnim.speed = 0.8f;
+            impact.transform.SetPosition2D(gameObject.transform.GetPositionX(), 17.4f);
             impactAnim.Play("impact");
-            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() < 1);
+            if (_hm.hp < FennelFight.HP_PHASE2) StartCoroutine(DoubleImpact());
+            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() <= 1);
             impact.GetComponent<BoxCollider2D>().enabled = true;
             GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake");
             if (dir < 0)
@@ -390,8 +329,6 @@ namespace Fennel
                 SpawnWave(true, 2f);
             }
 
-            if (_hm.hp < FennelFight.HP_PHASE2) StartCoroutine(SpawnOrbStream());
-
             yield return new WaitWhile(() => impactAnim.GetCurrentFrame() < 7);
             impact.GetComponent<BoxCollider2D>().enabled = false;
             yield return new WaitWhile(() => impactAnim.IsPlaying());
@@ -402,6 +339,108 @@ namespace Fennel
         }
 
         //------------------------------------------------------------Utility------------------------------------------------------------
+
+        private IEnumerator SlamGroundV2(GameObject[] lighOrdered) //Make second wave spawn in phase 2 that is in alternate pos
+        {
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder1"]);
+            GameObject[] lightnings = lighOrdered.OrderBy(x => new System.Random().Next()).ToArray();
+            foreach (GameObject parentL in lightnings)
+            {
+                GameObject light1 = parentL.transform.Find("light1").gameObject;
+                light1.GetComponent<SpriteRenderer>().enabled = true;
+                yield return new WaitForSeconds(0.003f);
+            }
+            yield return new WaitForSeconds(0.2f);
+            foreach (GameObject parentL in lightnings)
+            {
+                GameObject light1 = parentL.transform.Find("light1").gameObject;
+                light1.GetComponent<SpriteRenderer>().enabled = false;
+                yield return new WaitForSeconds(0.003f);
+            }
+            yield return new WaitForSeconds(0.1f);
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder2"]);
+            GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake");
+            foreach (GameObject parentL in lightnings)
+            {
+                GameObject light2 = parentL.transform.Find("light2").gameObject;
+                light2.GetComponent<SpriteRenderer>().enabled = true;
+                light2.GetComponent<BoxCollider2D>().enabled = true;
+                StartCoroutine(SpawnRumbleParticle(new Vector2(parentL.transform.GetPositionX(), 4f)));
+                yield return new WaitForSeconds(0.003f);
+            }
+            yield return new WaitForSeconds(0.1f);
+            foreach (GameObject parentL in lightnings)
+            {
+                Destroy(parentL);
+                yield return new WaitForSeconds(0.003f);
+            }
+        }
+
+        private IEnumerator SpawnLightning(Vector2 pos)
+        {
+            GameObject parentLight = Instantiate(Fennel.preloadedGO["lightning"]);
+            parentLight.transform.SetPosition2D(pos.x, pos.y);
+
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder1"]);
+            GameObject preLight = parentLight.transform.Find("light1").gameObject;
+            SpriteRenderer preLightSpr = preLight.GetComponent<SpriteRenderer>();
+            preLightSpr.enabled = true;
+
+            yield return new WaitForSeconds(0.25f);
+
+            preLightSpr.enabled = false;
+            _aud.PlayOneShot(ArenaFinder.audioClips["sndThunder2"]);
+            GameObject light = parentLight.transform.Find("light2").gameObject;
+            SpriteRenderer lightSpr = light.GetComponent<SpriteRenderer>();
+            BoxCollider2D lightBC = light.GetComponent<BoxCollider2D>();
+            StartCoroutine(SpawnRumbleParticle(new Vector2(pos.x, 4f)));
+            lightSpr.enabled = true;
+            lightBC.enabled = true;
+            GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake");
+
+            yield return new WaitForSeconds(0.25f);
+
+            Destroy(parentLight);
+        }
+
+        private IEnumerator DoubleImpact()
+        {
+            yield return new WaitForSeconds(0.5f);
+            GameObject impact = Instantiate(Fennel.preloadedGO["impact"]);
+            GameObject impact2 = Instantiate(Fennel.preloadedGO["impact"]);
+            impact.transform.localScale *= 1.1f;
+            impact2.transform.localScale *= 1.1f;
+            Animator impactAnim = impact.GetComponent<Animator>();
+            Animator impactAnim2 = impact.GetComponent<Animator>();
+            impactAnim.speed = 0.8f;
+            impact.transform.SetPosition2D(gameObject.transform.GetPositionX() + 2.5f, 16.4f);
+            impact2.transform.SetPosition2D(gameObject.transform.GetPositionX() - 2.5f, 16.4f);
+            impactAnim.Play("impact");
+            impactAnim2.Play("impact");
+            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() <= 1);
+            impact.GetComponent<BoxCollider2D>().enabled = true;
+            impact2.GetComponent<BoxCollider2D>().enabled = true;
+            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() < 7);
+            impact.GetComponent<BoxCollider2D>().enabled = false;
+            impact2.GetComponent<BoxCollider2D>().enabled = false;
+            yield return new WaitWhile(() => impactAnim.IsPlaying());
+            Destroy(impact);
+            Destroy(impact2);
+        }
+
+        private IEnumerator SpawnRumbleParticle(Vector2 pos)
+        {
+            GameObject go = Instantiate(Fennel.preloadedGO["realWave"]);
+            go.GetComponent<PlayMakerFSM>().enabled = false;
+            go.SetActive(true);
+            go.transform.SetPosition2D(pos.x, pos.y);
+            GameObject go2 = go.transform.Find("Burst Rocks Stomp").gameObject;
+            Destroy(go.transform.Find("Roll Dust").gameObject);
+            ParticleSystem ps1 = go2.GetComponent<ParticleSystem>();
+            ps1.Play();
+            yield return new WaitForSeconds(0.5f);
+            ps1.Stop();
+        }
 
         private Animator SpawnOrb(Vector2 pos, float speedScale = 1f, float sizeScale = 1f)
         {
@@ -445,8 +484,7 @@ namespace Fennel
 
         private void SpawnWave(bool faceRight, float size)
         {
-            PlayMakerFSM lord = Fennel.preloadedGO["wave"].LocateMyFSM("Mage Lord");
-            GameObject go = Instantiate(lord.GetAction<SpawnObjectFromGlobalPool>("Quake Waves", 0).gameObject.Value);
+            GameObject go = Instantiate(Fennel.preloadedGO["realWave"]);
             go.transform.localScale = new Vector2(size, 1f);
             PlayMakerFSM shock = go.LocateMyFSM("shockwave");
             shock.FsmVariables.FindFsmBool("Facing Right").Value = faceRight;

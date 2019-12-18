@@ -27,6 +27,10 @@ namespace Fennel
             isDying = true;
             _sr.material.SetFloat("_FlashAmount", 0f);
             _rb.velocity = new Vector2(0f, 0f);
+            foreach (PolygonCollider2D i in gameObject.GetComponentsInChildren<PolygonCollider2D>(true))
+            {
+                i.enabled = false;
+            }
             StartCoroutine(DeathSentence());
         }
 
@@ -54,7 +58,6 @@ namespace Fennel
             _target.RelinquishControl();
             _target.StopAnimationControl();
             _target.gameObject.GetComponent<tk2dSpriteAnimator>().Play("Idle");
-            _target.transform.localScale = new Vector2(-1f * Mathf.Abs(_target.transform.localScale.x), _target.transform.localScale.y);
             GameObject sec = text.transform.Find("Text").gameObject;
             sec.GetComponent<DialogueBox>().StartConversation("FENNEL_END", "testudo");
             yield return new WaitWhile(() => sec.GetComponent<DialogueBox>().currentPage <= 1);
