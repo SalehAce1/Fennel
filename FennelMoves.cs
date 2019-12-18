@@ -79,7 +79,7 @@ namespace Fennel
         {
             fight.doNextAttack = false;
             float dir = -1f * FaceHero();
-
+            yield return new WaitForSeconds(0.2f);
             PolygonCollider2D pc1 = gameObject.transform.Find("attA1").GetComponent<PolygonCollider2D>();
             PolygonCollider2D pc2 = gameObject.transform.Find("attA2").GetComponent<PolygonCollider2D>();
             PolygonCollider2D pc3 = gameObject.transform.Find("attA3").GetComponent<PolygonCollider2D>();
@@ -210,15 +210,15 @@ namespace Fennel
             yield return new WaitWhile(() => _anim.IsPlaying());
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
-            if (_hm.hp <= FennelFight.HP_PHASE2) yield return new WaitForSeconds(0.4f);
+            if (_hm.hp <= FennelFight.HP_PHASE2) yield return new WaitForSeconds(0.65f);
             fight.doNextAttack = true;
         }
 
         private IEnumerator SpawnHorizontalLightning()
         {
-            GameObject[] lightOrd = new GameObject[3];
-            int rnd = UnityEngine.Random.Range(0, 3);
-            for (float y = 6f, i = 0; y < 17f; y += 4f, i++)
+            GameObject[] lightOrd = new GameObject[2];
+            int rnd = UnityEngine.Random.Range(0, 2);
+            for (float y = 5.5f, i = 0; y < 10f; y += 3f, i++)
             {
                 int index = (int) i;
                 if (i == rnd) continue;
@@ -450,17 +450,6 @@ namespace Fennel
             orb.transform.localScale *= sizeScale;
             orb.SetActive(true);
             return orb.GetComponent<Animator>();
-        }
-
-        IEnumerator SpawnOrbStream()
-        {
-            for (int i = -2; i < 5; i++)
-            {
-                float randX = UnityEngine.Random.Range(90f + i * 5f, 90f + (i+1) * 5f);
-                float randY = UnityEngine.Random.Range(6f + i * 3f, 6f + (i+1) * 3f);
-                SpawnOrb(new Vector2(randX, randY), 1f, 0.8f);
-                yield return new WaitForSeconds(0.1f);
-            }
         }
 
         private float FaceHero(bool opposite = false)

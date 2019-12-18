@@ -77,6 +77,11 @@ namespace Fennel
             if (arg0.name == "GG_Mighty_Zote" && arg1.name == "GG_Workshop")
             {
                 GameCameras.instance.cameraFadeFSM.Fsm.SetState("FadeIn");
+                foreach (GameObject go in FindObjectsOfType<GameObject>().Where(x => !x.name.Contains(gameObject.name) && x.GetComponent<DamageHero>() != null))
+                {
+                    Destroy(go);
+                }
+                Destroy(fennel.GetComponent<FennelMoves>());
                 Destroy(fennel.GetComponent<FennelFight>());
                 Destroy(fennel);
                 PlayerData.instance.isInvincible = false;
@@ -91,7 +96,6 @@ namespace Fennel
 
         private void SetStatue()
         {
-
             //Used 56's pale prince code here
             GameObject statue = Instantiate(GameObject.Find("GG_Statue_ElderHu"));
             statue.transform.SetPosition2D(25.4f, statue.transform.GetPositionY());//6.5f); //248
@@ -120,7 +124,6 @@ namespace Fennel
             {
                 i.sprite = new Sprite();
             }
-
         }
 
         private IEnumerator AddComponent()

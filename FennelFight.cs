@@ -31,7 +31,6 @@ namespace Fennel
         private GameObject canvas;
         private FennelMoves moves;
         private bool soundOverride;
-        private bool fennelDamage;
         private bool flashing;
         private bool introTextDone;
         private bool heroDmg;
@@ -68,7 +67,6 @@ namespace Fennel
 
         private IEnumerator Start()
         {
-            
             FennelDeath.isDying = false;
             On.HealthManager.TakeDamage += HealthManager_TakeDamage;
             _hm.OnDeath += _hm_OnDeath;
@@ -415,7 +413,6 @@ namespace Fennel
         {
             if (self.name.Contains("fennel"))
             {
-                fennelDamage = true;
                 if (!flashing)
                 {
                     flashing = true;
@@ -547,6 +544,13 @@ namespace Fennel
                 if (i == move) continue;
                 movesCount[i] = 0;
             }
+        }
+
+        private void OnDestroy()
+        {
+            Log("DED");
+            On.HealthManager.TakeDamage -= HealthManager_TakeDamage;
+            _hm.OnDeath -= _hm_OnDeath;
         }
 
         private void Log(object o)
