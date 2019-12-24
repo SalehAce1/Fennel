@@ -45,7 +45,7 @@ namespace Fennel
         private const float LEFT_X = 88f;
         private const float TOO_FAR_X = 5f;
         private const int MAX_REPEAT = 1;
-        public const int HP_MAX = 900;
+        public const int HP_MAX = 1000;
         public const int HP_PHASE2 = 600;
         public float ORB_DASH_SIZE = 1.5f;
         public bool afterImageStart;
@@ -75,6 +75,7 @@ namespace Fennel
             
             gameObject.transform.SetPosition3D(HeroController.instance.transform.position.x + 10f, GROUND_Y, 0f);
             _hm.hp = HP_MAX;
+            _hm.IsInvincible = true;
             _bc.isTrigger = true;
             _rc.SetRecoilSpeed(15f);
             _rb.gravityScale = 0f;
@@ -265,7 +266,7 @@ namespace Fennel
                 {
                     int basicRnd = UnityEngine.Random.Range(0, 3);
 
-                    if (basicRnd < 2 && movesCount[moves.Attack] < 1f)
+                    if (basicRnd < 2 && movesCount[moves.AirAttack] < 1)
                     {
                         AttacksToDo.Add(moves.Attack);
                         AttacksToDo.Add(moves.AirAttack);
@@ -352,6 +353,7 @@ namespace Fennel
             yield return new WaitForSeconds(0.05f);
             yield return new WaitWhile(() => _anim.IsPlaying());
             StartCoroutine(NextAttack());
+            _hm.IsInvincible = false;
         }
 
         private void Update()
@@ -384,7 +386,6 @@ namespace Fennel
 
             sr.material = ArenaFinder.materials["outline"];
             go.AddComponent<SpriteOutline>();
-
             while (go)
             {
                 sr.sprite = _sr.sprite;
@@ -396,8 +397,17 @@ namespace Fennel
 
         private void _hm_OnDeath()
         {
+            StartCoroutine(DelayedDeath());
+        }
+
+        private IEnumerator DelayedDeath()
+        {
+            Log("Wait");
+            yield return new WaitWhile(() => Parryable.doingOne);
+            yield return new WaitForSeconds(0.05f);
+            Log("Okay now kill");
             Destroy(outlineShape);
-            foreach (GameObject go in FindObjectsOfType<GameObject>().Where(x=>!x.name.Contains(gameObject.name) && x.GetComponent<DamageHero>() != null))
+            foreach (GameObject go in FindObjectsOfType<GameObject>().Where(x => !x.name.Contains(gameObject.name) && x.GetComponent<DamageHero>() != null))
             {
                 go.SetActive(false);
             }
@@ -537,7 +547,7 @@ namespace Fennel
 
         private void UpdateMovesCount(Func<IEnumerator> move)
         {
-            if (move == moves.AirAttack || move == moves.Dash || move == moves.Dash) return;
+            if ( move == moves.Dash || move == moves.Dash) return; //move == moves.AirAttack ||
             List<Func<IEnumerator>> temp = new List<Func<IEnumerator>>(movesCount.Keys);
             foreach (Func<IEnumerator> i in temp)
             {

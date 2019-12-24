@@ -22,8 +22,9 @@ namespace Fennel
         public float distToGnd;
         private const float GROUND_Y = 6.75f;
         private FennelFight fight;
-        private const float IDLE_TIME = 0.05f;
+        private float IDLE_TIME = 0.1f;
         private const float AATTACK_IDLE = 0.2f;
+        private const float ORB_SPD_SCALE = 1.8f;
 
         private void Awake()
         {
@@ -40,7 +41,7 @@ namespace Fennel
         {
             fight.doNextAttack = false;
             float dir = FaceHero() * -1f;
-            Animator orbAnim = SpawnOrb(gameObject.transform.position, 3f, fight.ORB_DASH_SIZE);
+            Animator orbAnim = SpawnOrb(gameObject.transform.position, ORB_SPD_SCALE, fight.ORB_DASH_SIZE);
             yield return new WaitForSeconds(orbAnim.GetCurrentAnimatorStateInfo(0).length/3.3f);
             _anim.PlayAt("dash", 0);
             if (_hm.hp > FennelFight.HP_PHASE2) fight.afterImageStart = true;
@@ -273,6 +274,7 @@ namespace Fennel
         {
             fight.doNextAttack = false;
             float dir = FaceHero();
+            IDLE_TIME = 0.18f;
             _anim.Play("buff");
             yield return new WaitForSeconds(0.01f);
             yield return new WaitWhile(() => _anim.IsPlaying());
@@ -315,7 +317,7 @@ namespace Fennel
             impact.transform.SetPosition2D(gameObject.transform.GetPositionX(), 17.4f);
             impactAnim.Play("impact");
             if (_hm.hp < FennelFight.HP_PHASE2) StartCoroutine(DoubleImpact());
-            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() <= 1);
+            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() <= 2);
             impact.GetComponent<BoxCollider2D>().enabled = true;
             GameCameras.instance.cameraShakeFSM.SendEvent("AverageShake");
             if (dir < 0)
@@ -411,13 +413,14 @@ namespace Fennel
             impact.transform.localScale *= 1.1f;
             impact2.transform.localScale *= 1.1f;
             Animator impactAnim = impact.GetComponent<Animator>();
-            Animator impactAnim2 = impact.GetComponent<Animator>();
-            impactAnim.speed = 0.8f;
+            Animator impactAnim2 = impact2.GetComponent<Animator>();
+            impactAnim.speed = 0.9f;
+            impactAnim2.speed = 0.9f;
             impact.transform.SetPosition2D(gameObject.transform.GetPositionX() + 2.5f, 16.4f);
             impact2.transform.SetPosition2D(gameObject.transform.GetPositionX() - 2.5f, 16.4f);
             impactAnim.Play("impact");
             impactAnim2.Play("impact");
-            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() <= 1);
+            yield return new WaitWhile(() => impactAnim.GetCurrentFrame() <= 2);
             impact.GetComponent<BoxCollider2D>().enabled = true;
             impact2.GetComponent<BoxCollider2D>().enabled = true;
             yield return new WaitWhile(() => impactAnim.GetCurrentFrame() < 7);

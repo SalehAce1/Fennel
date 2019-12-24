@@ -147,7 +147,7 @@ namespace Fennel
                 i.material = new Material(Shader.Find("Sprites/Default"));
             }
             GameObject lightning = Fennel.preloadedGO["lightning"].transform.Find("light2").gameObject;
-            lightning.AddComponent<DamageHero>().damageDealt = 2;
+            lightning.AddComponent<DamageHero>().damageDealt = 1;
             lightning.gameObject.layer = 22;
 
             foreach (SpriteRenderer i in Fennel.preloadedGO["lightHoriz"].GetComponentsInChildren<SpriteRenderer>(true))
@@ -156,7 +156,7 @@ namespace Fennel
                 if (i.name == "light2")
                 {
                     GameObject lightning2 = i.gameObject;
-                    lightning2.AddComponent<DamageHero>().damageDealt = 2;
+                    lightning2.AddComponent<DamageHero>().damageDealt = 1;
                     lightning2.gameObject.layer = 22;
                 }
             }
