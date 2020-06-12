@@ -9,6 +9,7 @@ using HutongGames.PlayMaker.Actions;
 using ModCommon.Util;
 using ModCommon;
 using System.Linq;
+using UnityEngine.UI;
 using Logger = Modding.Logger;
 using UObject = UnityEngine.Object;
 using USceneManager = UnityEngine.SceneManagement.SceneManager;
@@ -24,38 +25,31 @@ namespace Fennel
         public static Shader flashShader;
         public static Shader outlineShader;
         public static bool foundBoss;
+        public static int BossLevel = -1;
 
         private void Start()
         {
             audioClips = new Dictionary<string, AudioClip>();
             materials = new Dictionary<string, Material>();
             animators = new Dictionary<string, RuntimeAnimatorController>();
-
-            string path = "";
-            string path2 = "";
-            switch (SystemInfo.operatingSystemFamily)
-            {
-                case OperatingSystemFamily.Windows:
-                    path = "fennelWin";
-                    path2 = "outlineWin";
-                    break;
-                case OperatingSystemFamily.Linux:
-                    path = "fennelLin";
-                    path2 = "outlineLin";
-                    break;
-                case OperatingSystemFamily.MacOSX:
-                    path = "fennelMC";
-                    path2 = "outlineMC";
-                    break;
-                default:
-                    Log("ERROR UNSUPPORTED SYSTEM: " + SystemInfo.operatingSystemFamily);
-                    return;
-            }
+            
             USceneManager.activeSceneChanged += SceneChanged;
-            AssetBundle ab = AssetBundle.LoadFromFile(Path.Combine(Application.streamingAssetsPath, path));
-            AssetBundle ab2 = AssetBundle.LoadFromFile(Path.Combine(Application.streamingAssetsPath, path2));
-            UObject[] assets = ab.LoadAllAssets();
-            UObject[] assets2 = ab2.LoadAllAssets();
+            On.BossChallengeUI.LoadBoss_int_bool += BossChallengeUI_LoadBoss_int_bool;
+            On.GameManager.BeginSceneTransition += GameManager_BeginSceneTransition;
+            AssetBundle ab = null;
+            AssetBundle ab2 = null;
+            foreach (var i in Fennel.assetbundles)
+            {
+                if (i.Key.Contains("fennel")) ab = i.Value;
+                if (i.Key.Contains("outline")) ab2 = i.Value;
+            }
+
+            if (ab == null || ab2 == null)
+            {
+                Log("ERROR: Bundles did not load.");
+                return;
+            }
+
             Fennel.preloadedGO["fennel"] = ab.LoadAsset<GameObject>("fennel");
             Fennel.preloadedGO["lightning"] = ab.LoadAsset<GameObject>("lightning");
             Fennel.preloadedGO["lightHoriz"] = ab.LoadAsset<GameObject>("lightHoriz");
@@ -63,17 +57,21 @@ namespace Fennel
             animators["fennel"] = ab.LoadAsset<RuntimeAnimatorController>("fennel");
             flashShader = ab.LoadAsset<Shader>("Diffuse Flash");
             outlineShader = ab2.LoadAsset<Shader>("Sprites-Outline");
-            Log("SHADER OUT " + (outlineShader == null));
             foreach (AudioClip a in ab.LoadAllAssets<AudioClip>())
             {
                 audioClips[a.name] = a;
             }
             materials["flash"] = ab.LoadAsset<Material>("Material");
             materials["outline"] = ab2.LoadAsset<Material>("SpriteOutline");
+            Log("Done with assetbundle");
         }
 
+        
         private void SceneChanged(Scene arg0, Scene arg1)
         {
+            if (arg1.name == "GG_Workshop") SetStatue();
+            if (BossLevel == -1) return;
+            if (arg1.name != "GG_Mighty_Zote") BossLevel = -1;
             if (arg0.name == "GG_Mighty_Zote" && arg1.name == "GG_Workshop")
             {
                 GameCameras.instance.cameraFadeFSM.Fsm.SetState("FadeIn");
@@ -87,8 +85,6 @@ namespace Fennel
                 PlayerData.instance.isInvincible = false;
             }
 
-            if (arg1.name == "GG_Workshop") SetStatue();
-
             if (arg1.name != "GG_Mighty_Zote") return;
             if (arg0.name != "GG_Workshop") return;
             StartCoroutine(AddComponent());
@@ -98,34 +94,53 @@ namespace Fennel
         {
             //Used 56's pale prince code here
             GameObject statue = Instantiate(GameObject.Find("GG_Statue_ElderHu"));
-            statue.transform.SetPosition2D(25.4f, statue.transform.GetPositionY());//6.5f); //248
+            statue.transform.SetPosition2D(23.5f, statue.transform.GetPositionY());//6.5f); //248
             var scene = ScriptableObject.CreateInstance<BossScene>();
             scene.sceneName = "GG_Mighty_Zote";
             var bs = statue.GetComponent<BossStatue>();
             bs.bossScene = scene;
-            bs.statueStatePD = "FennelArena";
-
-            var gg = new BossStatue.Completion
+            bs.statueStatePD = "statueStateFennel";
+            foreach (Transform i in statue.transform)
             {
-                completedTier1 = true,
-                seenTier3Unlock = true,
-                completedTier2 = true,
-                completedTier3 = true,
-                isUnlocked = true,
-                hasBeenSeen = true,
-                usingAltVersion = false,
-            };
-            bs.StatueState = gg;
+                if (i.name.Contains("door"))
+                {
+                    i.name = "door_dreamReturnGGFennel";
+                }
+            }
+            bs.SetPlaquesVisible(bs.StatueState.isUnlocked && bs.StatueState.hasBeenSeen);
+            bs.StatueState = ((GlobalModSettings) Fennel.Instance.GlobalSettings).CompletionFennel;
             var details = new BossStatue.BossUIDetails();
             details.nameKey = details.nameSheet = "FENNEL_NAME";
             details.descriptionKey = details.descriptionSheet = "FENNEL_DESC";
             bs.bossDetails = details;
             foreach (var i in bs.statueDisplay.GetComponentsInChildren<SpriteRenderer>(true))
             {
-                i.sprite = new Sprite();
+                i.sprite = Fennel.Sprites[0];
+                i.transform.localScale *= 3.5f;
             }
         }
+        
+        private void GameManager_BeginSceneTransition(On.GameManager.orig_BeginSceneTransition orig, GameManager self, GameManager.SceneLoadInfo info)
+        {
+            if (info.SceneName == "GG_Workshop" && BossLevel != -1)
+            {
+                info.EntryGateName = "door_dreamReturnGGFennel";
+            }
 
+            orig(self, info);
+        }
+        
+        private void BossChallengeUI_LoadBoss_int_bool(On.BossChallengeUI.orig_LoadBoss_int_bool orig, BossChallengeUI self, int level, bool doHideAnim)
+        {
+            string bName = self.transform.Find("Panel").Find("BossName_Text").GetComponent<Text>().text;
+            Log("GO " + bName);
+            if (bName.Contains("Fennel"))
+            {
+                BossLevel = level;
+            }
+            orig(self, level, doHideAnim);
+        }
+        
         private IEnumerator AddComponent()
         {
             yield return null;
@@ -201,6 +216,8 @@ namespace Fennel
         private void OnDestroy()
         {
             USceneManager.activeSceneChanged -= SceneChanged;
+            On.BossChallengeUI.LoadBoss_int_bool -= BossChallengeUI_LoadBoss_int_bool;
+            On.GameManager.BeginSceneTransition -= GameManager_BeginSceneTransition;
         }
         public static void Log(object o)
         {

@@ -19,6 +19,8 @@ namespace Fennel
         private Rigidbody2D _rb;
         private DamageHero _dmg;
         private BoxCollider2D _bc;
+        private EnemyHitEffectsUninfected _hitEffects;
+        private EnemyDeathEffectsUninfected _deathEff;
         private SpriteRenderer _sr;
         private Recoil _rc;
         private HeroController _target;
@@ -45,8 +47,8 @@ namespace Fennel
         private const float LEFT_X = 88f;
         private const float TOO_FAR_X = 5f;
         private const int MAX_REPEAT = 1;
-        public const int HP_MAX = 1000;
-        public const int HP_PHASE2 = 600;
+        public const int HP_MAX = 1500;
+        public const int HP_PHASE2 = 900;
         public float ORB_DASH_SIZE = 1.5f;
         public bool afterImageStart;
         public bool doNextAttack;
@@ -61,6 +63,8 @@ namespace Fennel
             _hm = gameObject.GetComponent<HealthManager>();
             _aud = gameObject.AddComponent<AudioSource>();
             _anim = gameObject.GetComponent<Animator>();
+            _hitEffects = gameObject.AddComponent<EnemyHitEffectsUninfected>();
+            _hitEffects.enabled = true;
             _target = HeroController.instance;
             movesCount = new Dictionary<Func<IEnumerator>, int>();
         }
@@ -70,7 +74,7 @@ namespace Fennel
             FennelDeath.isDying = false;
             On.HealthManager.TakeDamage += HealthManager_TakeDamage;
             _hm.OnDeath += _hm_OnDeath;
-            SetSoundSettings(_aud);
+            //SetSoundSettings(_aud);
             gameObject.layer = 11;
             
             gameObject.transform.SetPosition3D(HeroController.instance.transform.position.x + 10f, GROUND_Y, 0f);
@@ -105,8 +109,28 @@ namespace Fennel
             yield return new WaitWhile(() => _anim.IsPlaying());
             StartCoroutine(IntroText());
             StartCoroutine(IntroAnim());
+            AssignFields();
         }
+        
+        private void AssignFields()
+        {
+            Log("Assigning fields");
+            GameObject hornet = Fennel.preloadedGO["hornet"];
+            EnemyHitEffectsUninfected ogrimHitEffects = hornet.GetComponent<EnemyHitEffectsUninfected>();
+            foreach (FieldInfo fi in typeof(EnemyHitEffectsUninfected).GetFields(BindingFlags.Instance | BindingFlags.Public))
+            {
+                if (fi.Name.Contains("Origin"))
+                {
+                    _hitEffects.effectOrigin = new Vector3(0f, 0.0f, 0f);
+                    continue;
+                }
+                fi.SetValue(_hitEffects, fi.GetValue(ogrimHitEffects));
+            }
 
+            _deathEff = hornet.GetComponent<EnemyDeathEffectsUninfected>();
+            Log("End of assignment");
+        }
+        
         public IEnumerator NextAttack() //If attack too many times, attack then backflip
         {
             List<Func<IEnumerator>> AttacksToDo = new List<Func<IEnumerator>>();
@@ -407,6 +431,7 @@ namespace Fennel
             yield return new WaitForSeconds(0.05f);
             Log("Okay now kill");
             Destroy(outlineShape);
+            
             foreach (GameObject go in FindObjectsOfType<GameObject>().Where(x => !x.name.Contains(gameObject.name) && x.GetComponent<DamageHero>() != null))
             {
                 go.SetActive(false);
@@ -418,11 +443,14 @@ namespace Fennel
             StopAllCoroutines();
             Destroy(gameObject.GetComponent<FennelFight>());
         }
-
         private void HealthManager_TakeDamage(On.HealthManager.orig_TakeDamage orig, HealthManager self, HitInstance hitInstance)
         {
             if (self.name.Contains("fennel"))
             {
+                if (_hm.hp >= HP_PHASE2)
+                {
+                    _hitEffects.RecieveHitEffect(hitInstance.Direction);
+                }
                 if (!flashing)
                 {
                     flashing = true;

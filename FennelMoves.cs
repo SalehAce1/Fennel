@@ -22,8 +22,8 @@ namespace Fennel
         public float distToGnd;
         private const float GROUND_Y = 6.75f;
         private FennelFight fight;
-        private float IDLE_TIME = 0.1f;
-        private const float AATTACK_IDLE = 0.2f;
+        private float IDLE_TIME = 0.08f;
+        private const float AATTACK_IDLE = 0.15f;
         private const float ORB_SPD_SCALE = 1.8f;
 
         private void Awake()
@@ -128,7 +128,7 @@ namespace Fennel
             _anim.PlayAt("backflip",0);
             _aud.PlayOneShot(ArenaFinder.audioClips["sndBackflip"]);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 5);
-            _rb.velocity = new Vector2(15f * dir, 0f);
+            _rb.velocity = new Vector2(25f * dir, 0f);
             yield return new WaitWhile(() => _anim.GetCurrentFrame() < 11);
             _rb.velocity = new Vector2(0f, 0f);
             yield return new WaitWhile(() => _anim.IsPlaying());
@@ -211,7 +211,7 @@ namespace Fennel
             yield return new WaitWhile(() => _anim.IsPlaying());
             _anim.Play("idle");
             yield return new WaitForSeconds(IDLE_TIME);
-            if (_hm.hp <= FennelFight.HP_PHASE2) yield return new WaitForSeconds(0.65f);
+            if (_hm.hp <= FennelFight.HP_PHASE2) yield return new WaitForSeconds(0.6f);
             fight.doNextAttack = true;
         }
 
@@ -274,7 +274,7 @@ namespace Fennel
         {
             fight.doNextAttack = false;
             float dir = FaceHero();
-            IDLE_TIME = 0.18f;
+            IDLE_TIME = 0.14f;
             _anim.Play("buff");
             yield return new WaitForSeconds(0.01f);
             yield return new WaitWhile(() => _anim.IsPlaying());
