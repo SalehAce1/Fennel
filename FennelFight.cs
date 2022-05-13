@@ -1,8 +1,4 @@
-﻿using HutongGames.PlayMaker.Actions;
-using ModCommon.Util;
-using ModCommon;
-using Modding;
-using On;
+﻿using Modding;
 using System;
 using System.Collections;
 using UnityEngine;
@@ -216,7 +212,7 @@ namespace Fennel
                 outlineShape = new GameObject("fenOutline");
                 SpriteRenderer sr = outlineShape.AddComponent<SpriteRenderer>();
                 StartCoroutine(OutlineMaker(sr));
-                _hm.SetAttr("enemyType", 6); //setting to 6 means it won't give soul to player, 0 by default
+                ReflectionHelper.SetField(_hm,"enemyType",6); //setting to 6 means it won't give soul to player, 0 by default
                 AttacksToDo.Add(moves.Buff);
                 buffed = true;
             }
@@ -542,7 +538,6 @@ namespace Fennel
 
         IEnumerator EndingTextFade()
         {
-            CanvasUtil.CreateFonts();
             canvas = CanvasUtil.CreateCanvas(RenderMode.ScreenSpaceOverlay, new Vector2(1920f, 1080f));//1536f, 864f));
             title = CanvasUtil.CreateTextPanel(canvas, "Pardoner Fennel by Bombservice", 40, TextAnchor.MiddleCenter, new CanvasUtil.RectData(new Vector2(1000, 1500), new Vector2(0f, 65f), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0.5f)), false).GetComponent<Text>();
             title.color = new Color(1f, 1f, 1f, 0f);

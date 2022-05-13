@@ -3,11 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Modding;
 using JetBrains.Annotations;
-using ModCommon;
-using MonoMod.RuntimeDetour;
-using UnityEngine.SceneManagement;
 using UnityEngine;
-using USceneManager = UnityEngine.SceneManagement.SceneManager;
 using UObject = UnityEngine.Object;
 using System.Collections.Generic;
 using System.IO;
@@ -15,24 +11,20 @@ using System.IO;
 namespace Fennel
 {
     [UsedImplicitly]
-    public class Fennel : Mod, ITogglableMod
+    public class Fennel : Mod, ITogglableMod,IGlobalSettings<GlobalModSettings>
     {
         public static Dictionary<string, GameObject> preloadedGO = new Dictionary<string, GameObject>();
         public static Dictionary<string, AssetBundle> assetbundles = new Dictionary<string, AssetBundle>();
         public static readonly List<Sprite> Sprites = new List<Sprite>();
         public static Fennel Instance;
-        public override ModSettings GlobalSettings
-        {
-            get => _settings;
-            set => _settings = (GlobalModSettings) value;
-        }
-        private GlobalModSettings _settings = new GlobalModSettings();
+       public static GlobalModSettings _settings = new GlobalModSettings();
         
         public override string GetVersion()
         {
             return "1.0.0.0";
         }
-
+        public void OnLoadGlobal(GlobalModSettings s) => _settings = s;
+        public GlobalModSettings OnSaveGlobal() => _settings;
         public override List<(string, string)> GetPreloadNames()
         {
             return new List<(string, string)>
@@ -52,13 +44,11 @@ namespace Fennel
 
             Instance = this;
             Log("Initalizing.");
-
             Unload();
-            ModHooks.Instance.AfterSavegameLoadHook += AfterSaveGameLoad;
-            ModHooks.Instance.NewGameHook += AddComponent;
-            ModHooks.Instance.LanguageGetHook += LangGet;
-            ModHooks.Instance.SetPlayerVariableHook += SetVariableHook;
-            ModHooks.Instance.GetPlayerVariableHook += GetVariableHook;
+            On.HeroController.Start += AddCP;
+            ModHooks.LanguageGetHook += LangGet;
+            ModHooks.SetPlayerVariableHook += SetVariableHook;
+            ModHooks.GetPlayerVariableHook += GetVariableHook;
             
             string path = "";
             string path2 = "";
@@ -104,23 +94,32 @@ namespace Fennel
                     {
                         string bundleName = Path.GetExtension(res).Substring(1);
                         if (bundleName != path && bundleName != path2) continue;
-                        assetbundles[bundleName] = AssetBundle.LoadFromMemory(buffer);   
+                        assetbundles[bundleName] = AssetBundle.LoadFromMemory(buffer); 
+                        
                     }
                 }
             }
         }
-
-        private string LangGet(string key, string sheettitle)
+        private void AddCP(On.HeroController.orig_Start orig, HeroController self)
+        {
+            orig(self);
+            if (GameManager.instance.gameObject.GetComponent<ArenaFinder>() == null)
+            {
+                AddComponent();
+            }
+        }
+        private string LangGet(string key, string sheettitle,string orig)
         {
             switch (key)
             {
                 case "FENNEL_NAME": return "Pardoner Fennel";
                 case "FENNEL_DESC": return "Zealous follower of the Weeping God.";
-                case "FENNEL_INTRO": return "Hmm...Pale One, why do you resist so? This kingdom's fate was sealed upon its inception, it sleeps now as a graveyard of false gods.<page>" +
-                        "I know the tale of this land and the betrayal that gave it birth. The gods here forsook you, let Us take the last fragments of life lingering here so that the purpose of the God of gods may be fulfilled.<page>" +
-                        "Be warned, denial will bring only pain.<page>";
+                case "FENNEL_INTRO":
+                    return "Hmm...Pale One, why do you resist so? This kingdom's fate was sealed upon its inception, it sleeps now as a graveyard of false gods.<page>" +
+       "I know the tale of this land and the betrayal that gave it birth. The gods here forsook you, let Us take the last fragments of life lingering here so that the purpose of the God of gods may be fulfilled.<page>" +
+       "Be warned, denial will bring only pain.<page>";
                 case "FENNEL_END": return "You...truly are a fool.<page>";
-                default: return Language.Language.GetInternal(key, sheettitle);
+                default: return orig;
             }
         }
         
@@ -138,7 +137,6 @@ namespace Fennel
             return orig;
         }
 
-        private void AfterSaveGameLoad(SaveGameData data) => AddComponent();
 
         private void AddComponent()
         {
@@ -149,11 +147,10 @@ namespace Fennel
         {
             AudioListener.volume = 1f;
             AudioListener.pause = false;
-            ModHooks.Instance.AfterSavegameLoadHook -= AfterSaveGameLoad;
-            ModHooks.Instance.NewGameHook -= AddComponent;
-            ModHooks.Instance.LanguageGetHook -= LangGet;
-            ModHooks.Instance.SetPlayerVariableHook -= SetVariableHook;
-            ModHooks.Instance.GetPlayerVariableHook -= GetVariableHook;
+            ModHooks.LanguageGetHook -= LangGet;
+            On.HeroController.Start -= AddCP;
+            ModHooks.SetPlayerVariableHook -= SetVariableHook;
+            ModHooks.GetPlayerVariableHook -= GetVariableHook;
             
             var x = GameManager.instance?.gameObject.GetComponent<ArenaFinder>();
             if (x == null) return;
