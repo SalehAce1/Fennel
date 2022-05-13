@@ -26,15 +26,15 @@ namespace Fennel
         {
             if (ArenaFinder.BossLevel == 0)
             {
-                ((GlobalModSettings) Fennel.Instance.GlobalSettings).CompletionFennel.completedTier1 = true;
+                Fennel._settings.CompletionFennel.completedTier1 = true;
             }
             else if (ArenaFinder.BossLevel == 1)
             {
-                ((GlobalModSettings) Fennel.Instance.GlobalSettings).CompletionFennel.completedTier2 = true;
+                 Fennel._settings.CompletionFennel.completedTier2 = true;
             }
             else
             {
-                ((GlobalModSettings) Fennel.Instance.GlobalSettings).CompletionFennel.completedTier3 = true;
+                 Fennel._settings.CompletionFennel.completedTier3 = true;
             }
             isDying = true;
             _sr.material.SetFloat("_FlashAmount", 0f);

@@ -4,16 +4,13 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Reflection;
-using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
-using ModCommon.Util;
-using ModCommon;
 using System.Linq;
 using UnityEngine.UI;
 using Logger = Modding.Logger;
 using UObject = UnityEngine.Object;
 using USceneManager = UnityEngine.SceneManagement.SceneManager;
-
+using Satchel;
 namespace Fennel
 {
     internal class ArenaFinder : MonoBehaviour
@@ -38,6 +35,7 @@ namespace Fennel
             On.GameManager.BeginSceneTransition += GameManager_BeginSceneTransition;
             AssetBundle ab = null;
             AssetBundle ab2 = null;
+            
             foreach (var i in Fennel.assetbundles)
             {
                 if (i.Key.Contains("fennel")) ab = i.Value;
@@ -87,6 +85,7 @@ namespace Fennel
 
             if (arg1.name != "GG_Mighty_Zote") return;
             if (arg0.name != "GG_Workshop") return;
+            Log("Add Fight CP");
             StartCoroutine(AddComponent());
         }
 
@@ -108,7 +107,7 @@ namespace Fennel
                 }
             }
             bs.SetPlaquesVisible(bs.StatueState.isUnlocked && bs.StatueState.hasBeenSeen);
-            bs.StatueState = ((GlobalModSettings) Fennel.Instance.GlobalSettings).CompletionFennel;
+            bs.StatueState = (Fennel._settings).CompletionFennel;
             var details = new BossStatue.BossUIDetails();
             details.nameKey = details.nameSheet = "FENNEL_NAME";
             details.descriptionKey = details.descriptionSheet = "FENNEL_DESC";
@@ -143,6 +142,7 @@ namespace Fennel
         
         private IEnumerator AddComponent()
         {
+            Log("Destroy Zote Boss");
             yield return null;
             Destroy(GameObject.Find("Battle Control"));
             Destroy(GameObject.Find("Zote Boss"));
@@ -183,21 +183,15 @@ namespace Fennel
                 i.gameObject.AddComponent<Parryable>();
                 i.gameObject.layer = 22;
             }
-
-            foreach (GameObject i in Resources.FindObjectsOfTypeAll<GameObject>())
-            {
-                if (i.PrintSceneHierarchyPath() == "Hollow Shade\\Slash")
-                {
-                    Fennel.preloadedGO["parryFX"] = i.LocateMyFSM("nail_clash_tink").GetAction<SpawnObjectFromGlobalPool>("No Box Down", 1).gameObject.Value;
-                    AudioClip aud = i.LocateMyFSM("nail_clash_tink").GetAction<AudioPlayerOneShot>("Blocked Hit", 5).audioClips[0];
+                    GameObject shadeslash = GameManager.instance.GetSceneManager().GetComponent<SceneManager>().hollowShadeObject.FindGameObjectInChildren("Slash");
+                    Fennel.preloadedGO["parryFX"] = shadeslash.LocateMyFSM("nail_clash_tink").GetAction<SpawnObjectFromGlobalPool>("No Box Down", 1).gameObject.Value;
+                    AudioClip aud = shadeslash.LocateMyFSM("nail_clash_tink").GetAction<AudioPlayerOneShot>("Blocked Hit", 5).audioClips[0];
                     GameObject clashSndObj = new GameObject();
                     AudioSource clashSnd = clashSndObj.AddComponent<AudioSource>();
                     clashSnd.clip = aud;
                     clashSnd.pitch = UnityEngine.Random.Range(0.85f, 1.15f);
                     Fennel.preloadedGO["ClashTink"] = clashSndObj;
-                    break;
-                }
-            }
+                
 
             Fennel.preloadedGO["impact"].AddComponent<DamageHero>().damageDealt = 2;
             Fennel.preloadedGO["impact"].layer = 22;
